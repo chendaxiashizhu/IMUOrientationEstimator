@@ -25,6 +25,8 @@
 #include "mynteye/logger.h"
 #include "mynteye/api/api.h"
 
+#include "MahonyAHRSupdate.h"
+
 MYNTEYE_USE_NAMESPACE
 
 int main(int argc, char *argv[])
@@ -35,7 +37,13 @@ int main(int argc, char *argv[])
   const double gyro_bias_noise = 1e-8;
   const double acc_noise = 1e-3;
   /*需要三个参量*/
-  OriEst::Estimator orientation_estimatro(gyro_noise, gyro_bias_noise, acc_noise);
+//   OriEst::Estimator orientation_estimatro(gyro_noise, gyro_bias_noise, acc_noise);
+    OriEst::MahonyAHRSupdate mahonyAHRS(gyro_noise);
+    // OriEst::Estimator qq(gyro_noise, gyro_bias_noise, acc_noise);
+    mahonyAHRS.SetParameter(1.0,2.0);/*ki,kp*/
+    // mahonyAHRS.fuck();
+    // mahonyAHRS->SetParameter(0.2,2.0);
+
 
   // Set viz.
   cv::viz::Viz3d viz_windows("IMU Orientation");
@@ -96,7 +104,8 @@ int main(int argc, char *argv[])
 
       double timestamp = data.imu->timestamp * 1e-6;/*转换成为秒*/
       Eigen::Matrix3d G_R_I;
-      OriEst::status status = orientation_estimatro.Estimate(timestamp, gyro, acc, &G_R_I);
+      OriEst::status status = mahonyAHRS.Mahonyfilter(timestamp, gyro, acc, &G_R_I);
+    //   qq.fuck();
 
       // Show result.
       /*为什么要做这样的转换呢？*/

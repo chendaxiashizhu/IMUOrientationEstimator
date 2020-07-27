@@ -25,6 +25,8 @@
 #include "mynteye/logger.h"
 #include "mynteye/api/api.h"
 
+#include "MahonyAHRSupdate.h"
+
 MYNTEYE_USE_NAMESPACE
 
 int main(int argc, char *argv[])
@@ -35,12 +37,24 @@ int main(int argc, char *argv[])
   const double gyro_bias_noise = 1e-8;
   const double acc_noise = 1e-3;
   /*需要三个参量*/
-  OriEst::Estimator orientation_estimatro(gyro_noise, gyro_bias_noise, acc_noise);
+//   OriEst::Estimator orientation_estimatro(gyro_noise, gyro_bias_noise, acc_noise);
+    OriEst::MahonyAHRSupdate mahonyAHRS(gyro_noise);
+    OriEst::Estimator orientation_estimatro(gyro_noise, gyro_bias_noise, acc_noise);
+    mahonyAHRS.SetParameter(1.0,2.0);/*ki,kp*/
+    // mahonyAHRS.fuck();
+    // mahonyAHRS->SetParameter(0.2,2.0);
+
 
   // Set viz.
-  cv::viz::Viz3d viz_windows("IMU Orientation");
+  cv::viz::Viz3d viz_windows("IMU Orientation 互补滤波器");
   viz_windows.showWidget("ENU Frame", cv::viz::WCoordinateSystem(0.3));
   viz_windows.showWidget("IMU Frame", cv::viz::WCoordinateSystem(0.8));
+
+  //Set viz
+    cv::viz::Viz3d viz_windows_2("IMU Orientation ESKF");
+  viz_windows_2.showWidget("ENU Frame", cv::viz::WCoordinateSystem(0.3));
+  viz_windows_2.showWidget("IMU Frame", cv::viz::WCoordinateSystem(0.8));
+
 
   /*相机的 API*/
   auto &&api = API::Create(argc, argv);
@@ -96,23 +110,35 @@ int main(int argc, char *argv[])
 
       double timestamp = data.imu->timestamp * 1e-6;/*转换成为秒*/
       Eigen::Matrix3d G_R_I;
-      OriEst::status status = orientation_estimatro.Estimate(timestamp, gyro, acc, &G_R_I);
+      OriEst::status status = mahonyAHRS.Mahonyfilter(timestamp, gyro, acc, &G_R_I);
+      Eigen::Matrix3d G_R_I_2;
+      OriEst::status status2 = orientation_estimatro.Estimate(timestamp, gyro, acc, &G_R_I_2);
+    //   qq.fuck();
 
       // Show result.
       /*为什么要做这样的转换呢？*/
       cv::Mat cv_R = (cv::Mat_<float>(3, 3) << G_R_I(0, 0), G_R_I(0, 1), G_R_I(0, 2),
                                               G_R_I(1, 0), G_R_I(1, 1), G_R_I(1, 2),
                                               G_R_I(2, 0), G_R_I(2, 1), G_R_I(2, 2));
+      cv::Mat cv_R_2 = (cv::Mat_<float>(3, 3) << G_R_I_2(0, 0), G_R_I_2(0, 1), G_R_I_2(0, 2),
+                                              G_R_I_2(1, 0), G_R_I_2(1, 1), G_R_I_2(1, 2),
+                                              G_R_I_2(2, 0), G_R_I_2(2, 1), G_R_I_2(2, 2));
       cv::Affine3d pose;
       pose.linear(cv_R);
       pose.translate(cv::Vec3d(0., 0., 0.));
       viz_windows.setWidgetPose("IMU Frame", pose);
       /*其实这里的位置也可以添加*/
 
+        cv::Affine3d pose_2;
+        pose_2.linear(cv_R_2);
+        pose_2.translate(cv::Vec3d(0., 0., 0.));
+        viz_windows_2.setWidgetPose("IMU Frame", pose_2);
       if (imu_count % 10 == 0)
       {
         viz_windows.spinOnce(1);
+        viz_windows_2.spinOnce(1);
       }
+
     }
 
     char key = static_cast<char>(cv::waitKey(1));

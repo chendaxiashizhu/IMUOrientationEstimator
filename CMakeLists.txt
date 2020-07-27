@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(IMUOrientationEstimator)
-
 # Set C++14
 add_compile_options(-std=c++14)
 
@@ -8,41 +7,30 @@ add_compile_options(-std=c++14)
 set(CMAKE_BUILD_TYPE Release)
 
 find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
+# MYNTEYE
+find_package(mynteye REQUIRED)
+message(STATUS "Found mynteye: ${mynteye_VERSION}")
 
-include_directories(include)
+# 包含了所有的头文件
+include_directories(include
+${EIGEN3_INCLUDE_DIR})
 add_library(${PROJECT_NAME} SHARED 
     src/Initializer.cpp
-    src/Propagator.cpp
-    src/Updater.cpp
     src/Estimator.cpp
+    src/Propagator.cpp
+    src/Update.cpp
+    src/MahonyAHRSupdate.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${EIGEN3_LIBS})
+target_link_libraries(${PROJECT_NAME} 
+    ${EIGEN3_LIBS}
+    mynteye)
+    
+add_executable(RunMyntEye example/RunMyntEye.cpp)
+target_link_libraries(RunMyntEye ${PROJECT_NAME})
 
-option(BUILD_EXAMPLE "Build example code" ON)
+add_executable(Mahonyfilter example/Mahonyfilter.cpp)
+target_link_libraries(Mahonyfilter ${PROJECT_NAME})
 
-if (BUILD_EXAMPLE) 
-    find_package(OpenCV 4 REQUIRED)
-    include_directories(${OpenCV_INCLUDE_DIRS})
+add_executable(runall example/all.cpp)
+target_link_libraries(runall ${PROJECT_NAME})
 
-    # ROSBAG
-    find_package(catkin REQUIRED COMPONENTS
-        sensor_msgs
-        rosbag
-    )
-    include_directories(${catkin_INCLUDE_DIRS})
-
-    add_executable(RunRosbag example/RunRosbag.cpp)
-    target_link_libraries(RunRosbag
-        ${catkin_LIBRARIES}
-        ${PROJECT_NAME}
-        ${OpenCV_LIBS}
-    )
-
-    # MYNTEYE
-    find_package(mynteye REQUIRED)
-    message(STATUS "Found mynteye: ${mynteye_VERSION}")
-    add_executable(RunMyntEye example/RunMyntEye.cpp)
-    target_link_libraries(RunMyntEye ${PROJECT_NAME} mynteye ${OpenCV_LIBS})
-
-endif()

@@ -9,3 +9,9 @@ A detailed derivation of the algorithm and a video are in the **doc** folder of 
 
 **Video**
 <https://github.com/ydsf16/IMUOrientationEstimator/blob/master/doc/IMUOrientationEstimator.mp4>
+
+### 修改记录
+
+- 适用于不同的小觅相机的版本，S1030
+- 增加无人机中常用的 Manony 互补滤波器，对比与ESKF的性能
+
